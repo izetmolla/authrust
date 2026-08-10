@@ -1,6 +1,7 @@
 # authrust
 
-[![Release](https://img.shields.io/badge/release-v0.1.0-brightgreen?logo=github&logoColor=white&labelColor=24292f)](https://crates.io/crates/authrust)
+[![Release](https://img.shields.io/crates/v/authrust?label=release&color=brightgreen&logo=github&logoColor=white&labelColor=24292f)](https://crates.io/crates/authrust)
+[![CI](https://img.shields.io/github/actions/workflow/status/izetmolla/authrust/ci.yml?branch=main&label=CI&logo=github&logoColor=white&labelColor=24292f)](https://github.com/izetmolla/authrust/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue?logo=open-source-initiative&logoColor=white&labelColor=24292f)](LICENSE-APACHE)
 [![Documentation](https://img.shields.io/badge/documentation-available-brightgreen?logo=readthedocs&logoColor=white&labelColor=24292f)](https://docs.rs/authrust)
 
@@ -236,6 +237,24 @@ How to run and test: [`examples/README.md`](examples/README.md).
 Overview and custom providers: [`docs/providers/README.md`](docs/providers/README.md).
 
 Any other OAuth/OIDC service works as a plain `OAuthProvider`. The `Provider` trait is public if you need a custom one.
+
+---
+
+## Releasing
+
+Releases are automated with [release-plz](https://release-plz.dev) (same pattern used across the Rust ecosystem).
+
+| Conventional commit | SemVer bump |
+|---------------------|-------------|
+| `fix: …` | **patch** — `0.1.0` → `0.1.1` |
+| `feat: …` | **minor** — `0.1.0` → `0.2.0` |
+| `feat!: …` or `BREAKING CHANGE:` | **major** — `0.1.0` → `1.0.0` |
+
+1. Merge work to `main` with conventional commits.
+2. GitHub Actions opens/updates a release PR (`Cargo.toml` + [`CHANGELOG.md`](CHANGELOG.md)).
+3. Merge that PR → tag `vX.Y.Z`, GitHub Release, and `cargo publish` to crates.io.
+
+One-time setup: allow Actions to create PRs, and add the `CARGO_REGISTRY_TOKEN` repository secret (crates.io API token).
 
 ---
 

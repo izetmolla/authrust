@@ -1,0 +1,84 @@
+# Release automation with release-plz (https://release-plz.dev).
+#
+# How versions bump (Semantic Versioning via Conventional Commits + API checks):
+#   fix: / perf: / refactor:  →  patch  (0.1.0 → 0.1.1)
+#   feat:                     →  minor  (0.1.0 → 0.2.0)
+#   feat!: / BREAKING CHANGE  →  major  (0.1.0 → 1.0.0)
+#                              (or minor while still on 0.x, per semver rules)
+#
+# Flow:
+#   1. Push/merge to main → release-plz opens/updates a "release" PR
+#      (Cargo.toml version + CHANGELOG.md).
+#   2. Merge that PR → release-plz tags, creates a GitHub Release, and
+#      publishes to crates.io.
+#
+# Setup (one-time):
+#   - Repo Settings → Actions → General → Workflow permissions:
+#       "Read and write permissions" + allow creating/approving PRs
+#   - Add secret CARGO_REGISTRY_TOKEN (crates.io token with publish-update)
+#   - Prefer commits like: feat: ..., fix: ..., chore: ...
+
+name: Release-plz
+
+on:
+  push:
+    branches: [main, master]
+
+permissions: {}
+
+jobs:
+  # Publish crates that are already version-bumped on main but not yet on crates.io.
+  release-plz-release:
+    name: Release-plz release
+    runs-on: ubuntu-latest
+    if: ${{ github.repository_owner == 'izetmolla' }}
+    permissions:
+      contents: write
+      pull-requests: read
+      id-token: write # crates.io trusted publishing (optional)
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run release-plz
+        uses: release-plz/action@v0.5
+        with:
+          command: release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+  # Open/update a PR that bumps patch/minor/major + CHANGELOG for the next release.
+  release-plz-pr:
+    name: Release-plz PR
+    runs-on: ubuntu-latest
+    if: ${{ github.repository_owner == 'izetmolla' }}
+    permissions:
+      contents: write
+      pull-requests: write
+    concurrency:
+      group: release-plz-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run release-plz
+        uses: release-plz/action@v0.5
+        with:
+          command: release-pr
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
