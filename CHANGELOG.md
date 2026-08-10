@@ -16,6 +16,13 @@ Versions are bumped automatically by [release-plz](https://release-plz.dev) from
 
 ## [Unreleased]
 
+## [0.1.1](https://github.com/izetmolla/authrust/compare/v0.1.0...v0.1.1) - 2026-08-10
+
+### Other
+
+- Refactor CI and release workflows to use actions/checkout@v5, update release-plz configuration, and clean up changelog template in release-plz.toml. Improve integration test setup and code clarity in examples and user modules.
+- Update README.md to improve release information and add CI badge. Introduce a section on automated releases with release-plz, detailing the conventional commit guidelines for versioning.
+
 ## [0.1.0] - 2026-08-10
 
 ### Added
