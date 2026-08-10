@@ -13,6 +13,8 @@
 //! Any other OAuth/OIDC service can use a plain
 //! [`OAuthProvider`](crate::OAuthProvider). The [`Provider`](crate::Provider)
 //! trait is public for custom implementations.
+//!
+//! Longer guides live under `docs/providers/` in the repository.
 
 pub mod azuread;
 pub mod common;

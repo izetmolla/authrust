@@ -154,8 +154,12 @@ pub use provider::{
 };
 pub use refresh::{RefreshToken, RefreshTokenLayer};
 pub use response::{BoxedBody, BoxedResponse, Response, ResponseWriter};
+pub use roles::{format_roles, roles_from_any};
 pub use session::{Session, SessionData, SessionType};
 pub use session_check::CheckSessionResult;
 pub use token::{Claims, RefreshTokenClaims, Tokens};
 pub use types::{Account, JsonbAny, JsonbArray, Profile, TokenSet};
 pub use user::{AuthData, OAuthUser, User};
+pub use utils::{
+    build_redis_key, deserialize_session_data, format_user, is_excluded_path, parse_custom_duration,
+};

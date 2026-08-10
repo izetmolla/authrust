@@ -85,11 +85,11 @@ impl Authorization {
         if user_id.is_empty() {
             return Err(Error::msg("user ID cannot be empty"));
         }
-        let sql = format!(
+        let sql = safe_sql(format!(
             "SELECT roles FROM {} WHERE id = $1 LIMIT 1",
             quote_ident(self.user_table_name())
-        );
-        let query = sqlx::query(safe_sql(sql));
+        ));
+        let query = sqlx::query(&sql);
         let row = bind_id!(query, user_id).fetch_one(db).await?;
         let roles: Option<Value> = row.try_get("roles")?;
         JsonbArray::scan(roles.as_ref())

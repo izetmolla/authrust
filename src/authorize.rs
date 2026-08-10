@@ -1,4 +1,9 @@
 //! Session creation and token issuance.
+//!
+//! Go's `WithContext` on authorize options is not mirrored: Rust uses async
+//! `sqlx` queries instead of GORM's `WithContext`, so cancellation belongs on
+//! the surrounding async task / `tokio` cancellation rather than a field on
+//! [`AuthorizeOptions`].
 
 use crate::authorization::Authorization;
 use crate::errors::{Error, Result};
@@ -83,6 +88,14 @@ impl Authorization {
             }
         }
 
+        // Mirror goauth: reject payloads that do not serialize as valid JSON.
+        if !is_valid_json_payload(&options.content.to_string()) {
+            return Err(Error::msg("invalid content JSON payload"));
+        }
+        if !is_valid_json_payload(&options.roles.to_string()) {
+            return Err(Error::msg("invalid roles JSON payload"));
+        }
+
         let session_id = self
             .create_session(&options)
             .await
@@ -97,5 +110,41 @@ impl Authorization {
             },
             session_id,
         ))
+    }
+}
+
+/// Reports whether `raw` is valid JSON (same check as goauth's `json.Valid`).
+fn is_valid_json_payload(raw: &str) -> bool {
+    serde_json::from_str::<serde_json::Value>(raw).is_ok()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::authorization::Config;
+
+    fn test_auth() -> Authorization {
+        Authorization::from_config_unchecked(Config {
+            jwt_secret: "test-secret".into(),
+            ..Config::default()
+        })
+    }
+
+    #[test]
+    fn valid_json_payloads_pass() {
+        assert!(is_valid_json_payload("{}"));
+        assert!(is_valid_json_payload("[]"));
+        assert!(is_valid_json_payload(r#"{"a":1}"#));
+        assert!(!is_valid_json_payload("{"));
+        assert!(!is_valid_json_payload("not-json"));
+    }
+
+    #[test]
+    fn with_content_sets_authorize_options() {
+        let auth = test_auth();
+        let mut content = JsonbAny::new();
+        content.insert("plan".into(), serde_json::json!("pro"));
+        let opts = new_authorize_options([auth.with_content(content.clone())]);
+        assert_eq!(opts.content, content);
     }
 }

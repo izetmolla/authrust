@@ -42,7 +42,7 @@ impl Authorization {
             return Err(Error::msg("missing or malformed JWT"));
         }
         let data = decode::<JsonMap<String, Value>>(raw, &self.decoding_key(), &self.validation())
-            .map_err(|_| Error::msg("invalid or expired JWT"))?;
+            .map_err(|err| Error::msg(err.to_string()))?;
         Ok(JwtToken {
             header: data.header,
             claims: data.claims,
@@ -350,6 +350,19 @@ mod tests {
             jwt_secret: secret.to_string(),
             ..Config::default()
         })
+    }
+
+    #[test]
+    fn parse_jwt_surfaces_decode_error_like_go() {
+        let auth = test_authorization("test-secret");
+        let err = auth.parse_jwt("not-a-jwt").unwrap_err();
+        let message = err.to_string();
+        assert!(!message.is_empty());
+        assert_ne!(message, "invalid or expired JWT");
+        assert_eq!(
+            auth.parse_jwt("").unwrap_err().to_string(),
+            "missing or malformed JWT"
+        );
     }
 
     async fn ok_service(

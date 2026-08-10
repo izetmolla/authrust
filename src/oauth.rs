@@ -123,7 +123,7 @@ pub async fn exchange_code(
     }
     let token_url = p.token_endpoint();
     if token_url.is_empty() {
-        return Err(Error::msg("provider missing token_url"));
+        return Err(Error::msg("provider missing TokenURL"));
     }
 
     let mut form: BTreeMap<String, String> = BTreeMap::new();
@@ -199,7 +199,11 @@ pub fn parse_token_response(body: &[u8], content_type: &str) -> Result<TokenSet>
         expires_in: 0,
         raw: JsonMap::new(),
     };
-    if let Some(expires_in) = raw.get("expires_in").and_then(Value::as_i64) {
+    if let Some(expires_in) = raw.get("expires_in").and_then(|v| {
+        v.as_i64()
+            .or_else(|| v.as_f64().map(|n| n as i64))
+            .or_else(|| v.as_u64().map(|n| n as i64))
+    }) {
         tokens.expires_in = expires_in;
     }
     tokens.raw = raw;
@@ -234,4 +238,20 @@ pub async fn fetch_user_info(p: &OAuthProvider, tokens: &TokenSet) -> Result<Pro
     }
 
     serde_json::from_slice(&body).map_err(|err| Error::msg(format!("userinfo: decode: {err}")))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_token_response_accepts_integer_and_float_expires_in() {
+        let body = br#"{"access_token":"a","expires_in":3600}"#;
+        let tokens = parse_token_response(body, "application/json").unwrap();
+        assert_eq!(tokens.expires_in, 3600);
+
+        let body = br#"{"access_token":"a","expires_in":3600.9}"#;
+        let tokens = parse_token_response(body, "application/json").unwrap();
+        assert_eq!(tokens.expires_in, 3600);
+    }
 }

@@ -176,11 +176,11 @@ impl Authorization {
             }
         }
 
-        let sql = format!(
-            "SELECT {SESSION_COLUMNS} FROM {} WHERE id = $1 AND is_deleted = false AND deleted_at IS NULL LIMIT 1",
+        let sql = safe_sql(format!(
+            "SELECT {SESSION_COLUMNS} FROM {} WHERE id = $1 AND is_deleted = false LIMIT 1",
             quote_ident(self.sessions_table())
-        );
-        let query = sqlx::query(safe_sql(sql));
+        ));
+        let query = sqlx::query(&sql);
         let row = bind_id!(query, session_id).fetch_one(db).await?;
         let mut session = Session::from_row(&row)?;
 
@@ -205,11 +205,11 @@ impl Authorization {
 
     async fn load_session_user(&self, user_id: &str) -> Result<User> {
         let db = self.db()?;
-        let sql = format!(
+        let sql = safe_sql(format!(
             "SELECT id::text AS id, roles FROM {} WHERE id = $1 LIMIT 1",
             quote_ident(self.user_table_name())
-        );
-        let query = sqlx::query(safe_sql(sql));
+        ));
+        let query = sqlx::query(&sql);
         let row = bind_id!(query, user_id).fetch_one(db).await?;
         let roles: Option<Value> = row.try_get("roles")?;
         Ok(User {
@@ -262,7 +262,7 @@ impl Authorization {
         // `user_id` is nullable, but a typed NULL cannot be bound without
         // knowing the column type, so the column is omitted when unset.
         let table = quote_ident(self.sessions_table());
-        let sql = if o.user_id.is_empty() {
+        let sql = safe_sql(if o.user_id.is_empty() {
             format!(
                 "INSERT INTO {table} (id, ip_address, user_agent, method, account, expires_at, created_at, updated_at) \
                  VALUES ($1, $2, $3, $4, $5, $6, $7, $7) RETURNING id::text AS id"
@@ -272,9 +272,9 @@ impl Authorization {
                 "INSERT INTO {table} (id, user_id, ip_address, user_agent, method, account, expires_at, created_at, updated_at) \
                  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8) RETURNING id::text AS id"
             )
-        };
+        });
 
-        let query = sqlx::query(safe_sql(sql)).bind(session_id);
+        let query = sqlx::query(&sql).bind(session_id);
         let query = if o.user_id.is_empty() {
             query
         } else {

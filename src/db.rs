@@ -1,7 +1,6 @@
 //! Small helpers over `sqlx` that stand in for GORM's dynamic table names and
 //! loose string/UUID identifier handling.
 
-use sqlx::AssertSqlSafe;
 use uuid::Uuid;
 
 /// Marks a statement built at runtime as safe to execute.
@@ -9,8 +8,11 @@ use uuid::Uuid;
 /// The only interpolated fragments are the configured table names, which go
 /// through [`quote_ident`]; every value reaching a query is sent as a bind
 /// parameter.
-pub(crate) fn safe_sql(sql: String) -> AssertSqlSafe<String> {
-    AssertSqlSafe(sql)
+///
+/// Returns the SQL string directly for `sqlx` 0.8 compatibility (`AssertSqlSafe`
+/// exists only in `sqlx` 0.9+).
+pub(crate) fn safe_sql(sql: String) -> String {
+    sql
 }
 
 /// Quotes a possibly schema-qualified SQL identifier so a configured table name

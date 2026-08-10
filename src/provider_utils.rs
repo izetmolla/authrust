@@ -126,7 +126,7 @@ async fn fetch_oidc_config(issuer: &str) -> Result<OidcConfig> {
         .map_err(|err| Error::msg(format!("oidc discovery: {err}")))?;
 
     let status = response.status();
-    if !status.is_success() {
+    if status.as_u16() != 200 {
         return Err(Error::msg(format!(
             "oidc discovery: unexpected status {}",
             status.as_u16()

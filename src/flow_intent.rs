@@ -50,7 +50,7 @@ impl Authorization {
             return Err(Error::msg("flow intent is required"));
         }
         if self.jwt_secret().is_empty() {
-            return Err(Error::config("jwt_secret is required to sign flow intent"));
+            return Err(Error::config("JWTSecret is required to sign flow intent"));
         }
         let (_, secure) = self.origin(r)?;
         set_cookie(

@@ -226,12 +226,14 @@ How to run and test: [`examples/README.md`](examples/README.md).
 
 ## Providers
 
-| Provider | Module | Notes |
-|----------|--------|-------|
-| Google | `providers::google` | OIDC — discovery, PKCE + state + nonce |
-| Azure AD / Entra ID | `providers::azuread` | OIDC v2.0 + Microsoft Graph profile |
-| Credentials | `providers::credentials` | Username/password with a custom `authorize` callback |
-| LDAP / Active Directory | `providers::ldap` | Directory bind + attribute and role mapping |
+| Provider | Module | Notes | Docs |
+|----------|--------|-------|------|
+| Google | `providers::google` | OIDC — discovery, PKCE + state + nonce | [docs](docs/providers/google.md) |
+| Azure AD / Entra ID | `providers::azuread` | OIDC v2.0 + Microsoft Graph profile | [docs](docs/providers/azuread.md) |
+| Credentials | `providers::credentials` | Username/password with a custom `authorize` callback | [docs](docs/providers/credentials.md) |
+| LDAP / Active Directory | `providers::ldap` | Directory bind + attribute and role mapping | [docs](docs/providers/ldap.md) |
+
+Overview and custom providers: [`docs/providers/README.md`](docs/providers/README.md).
 
 Any other OAuth/OIDC service works as a plain `OAuthProvider`. The `Provider` trait is public if you need a custom one.
 

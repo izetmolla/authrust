@@ -40,10 +40,29 @@ impl User {
             .unwrap_or_default()
     }
 
-    /// The best stable identifier for this user: the username, then the email,
-    /// then the DN.
+    /// The best stable identifier for this user: the username, then the DN
+    /// (mirrors goauth's `Identity`).
     pub fn identity(&self) -> String {
-        first_non_empty([self.username.clone(), self.email.clone(), self.dn.clone()])
+        if !self.username.trim().is_empty() {
+            return self.username.clone();
+        }
+        self.dn.clone()
+    }
+
+    /// Best email/UPN to look up the app user after LDAP auth
+    /// (mirrors goauth's `LoginEmail`).
+    ///
+    /// Prefers `email`, then `mail`, `userPrincipalName`, `username`, then
+    /// `fallback`.
+    pub fn login_email(&self, fallback: &str) -> String {
+        let mail = self.get("mail");
+        let upn = self.get("userPrincipalName");
+        for value in [self.email.as_str(), mail.as_str(), upn.as_str(), self.username.as_str()] {
+            if !value.trim().is_empty() {
+                return value.to_string();
+            }
+        }
+        fallback.to_string()
     }
 }
 
@@ -191,6 +210,42 @@ mod tests {
         assert_eq!(user.name, "Jane Doe");
         assert_eq!(user.roles, vec!["Admins", "Staff"]);
         assert_eq!(user.identity(), "jane");
+        assert_eq!(user.login_email("fallback"), "jane@example.com");
+    }
+
+    #[test]
+    fn identity_prefers_username_then_dn() {
+        let user = User {
+            dn: "cn=jane,dc=example,dc=com".into(),
+            email: "jane@example.com".into(),
+            ..User::default()
+        };
+        assert_eq!(user.identity(), "cn=jane,dc=example,dc=com");
+
+        let with_username = User {
+            username: "jane".into(),
+            ..user
+        };
+        assert_eq!(with_username.identity(), "jane");
+    }
+
+    #[test]
+    fn login_email_falls_back_through_attributes() {
+        let mut user = User {
+            attributes: HashMap::from([(
+                "userPrincipalName".to_string(),
+                vec!["jane@corp.local".to_string()],
+            )]),
+            ..User::default()
+        };
+        assert_eq!(user.login_email("fallback"), "jane@corp.local");
+
+        user.username = "jane".into();
+        user.attributes.clear();
+        assert_eq!(user.login_email("fallback"), "jane");
+
+        user.username.clear();
+        assert_eq!(user.login_email("fallback"), "fallback");
     }
 
     #[test]

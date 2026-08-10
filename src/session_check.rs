@@ -72,11 +72,11 @@ impl Authorization {
     /// Loads the session row and checks that it may still authenticate requests.
     pub async fn ensure_session_active(&self, session_id: &str) -> Result<()> {
         let db = self.db()?;
-        let sql = format!(
-            "SELECT {SESSION_COLUMNS} FROM {} WHERE id = $1 AND is_deleted = false AND deleted_at IS NULL LIMIT 1",
+        let sql = safe_sql(format!(
+            "SELECT {SESSION_COLUMNS} FROM {} WHERE id = $1 AND is_deleted = false LIMIT 1",
             quote_ident(self.sessions_table())
-        );
-        let query = sqlx::query(safe_sql(sql));
+        ));
+        let query = sqlx::query(&sql);
         let row = bind_id!(query, session_id)
             .fetch_one(db)
             .await

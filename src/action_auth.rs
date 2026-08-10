@@ -25,7 +25,7 @@ use crate::provider::{
 };
 use crate::provider_utils::{callback_query, discover};
 use crate::response::{Response, ResponseWriter, write_json};
-use crate::types::{Account, JsonbArray, Profile};
+use crate::types::{Account, JsonbAny, JsonbArray, Profile};
 use crate::user::{OAuthUser, User};
 use crate::utils::format_user;
 
@@ -153,7 +153,7 @@ impl Authorization {
         if p.authorization_endpoint().is_empty() {
             return write_json(
                 StatusCode::INTERNAL_SERVER_ERROR,
-                json!({ "message": "Provider missing authorization_url", "code": "ERROR" }),
+                json!({ "message": "Provider missing AuthorizationURL", "code": "ERROR" }),
             );
         }
 
@@ -466,7 +466,7 @@ impl Authorization {
 
         let Some(profile_fn) = p.profile.clone() else {
             return self.render_callback_page(json!({
-                "message": "Provider missing profile function",
+                "message": "Provider missing Profile function",
                 "code": "ERROR",
             }));
         };
@@ -495,7 +495,7 @@ impl Authorization {
 
         let Some(resolve_user) = self.resolve_user_fn().cloned() else {
             return self.render_callback_page(json!({
-                "message": "resolve_user is not set on the Authorization value",
+                "message": "ResolveUser() function is not set on Authorization object",
                 "code": "ERROR",
             }));
         };
@@ -517,7 +517,7 @@ impl Authorization {
         };
         let Some(resolved_user) = resolved_user.filter(|user| !user.id.is_empty()) else {
             return self.render_callback_page(json!({
-                "message": "resolve_user returned an invalid user",
+                "message": "ResolveUser returned an invalid user",
                 "code": "ERROR",
             }));
         };
@@ -569,7 +569,7 @@ impl Authorization {
         }
 
         self.render_callback_page(json!({
-            "message": "Account connected successfully.",
+            "message": "Microsoft account connected successfully.",
             "code": "SUCCESS",
             "user": user,
             "account": account,
@@ -659,7 +659,7 @@ impl Authorization {
             Ok((Some(user), _)) if !user.id.is_empty() => Ok(user),
             Ok(_) => Err(Box::new(write_json(
                 StatusCode::UNAUTHORIZED,
-                json!({ "message": "resolve_user returned an invalid user", "code": "ERROR" }),
+                json!({ "message": "ResolveUser returned an invalid user", "code": "ERROR" }),
             ))),
             Err(err) => Err(Box::new(write_json(
                 StatusCode::UNAUTHORIZED,
@@ -679,6 +679,11 @@ impl Authorization {
     /// Sets the role grants embedded in the tokens.
     pub fn with_user_roles(&self, roles: JsonbArray) -> AuthorizeOptionsFunc {
         Box::new(move |o: &mut AuthorizeOptions| o.roles = roles)
+    }
+
+    /// Sets the arbitrary content embedded in the access/refresh token claims.
+    pub fn with_content(&self, content: JsonbAny) -> AuthorizeOptionsFunc {
+        Box::new(move |o: &mut AuthorizeOptions| o.content = content)
     }
 
     /// Attaches the provider account stored on the session row.
