@@ -1,0 +1,51 @@
+# Build artifacts
+/target/
+**/target/
+debug/
+release/
+
+# Cargo
+# Cargo.lock is committed for binaries, ignored for libraries.
+# Uncomment the next line if this crate is published as a library only.
+# Cargo.lock
+**/*.rs.bk
+*.pdb
+
+# Test / coverage output
+*.profraw
+*.profdata
+/coverage/
+tarpaulin-report.html
+cobertura.xml
+lcov.info
+
+# Benchmarks and profiling
+/criterion/
+perf.data
+perf.data.old
+flamegraph.svg
+
+# Rust tooling caches
+.cargo/registry/
+.cargo/git/
+.rustc_info.json
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Editors and IDEs
+.vscode/
+.idea/
+*.iml
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
