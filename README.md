@@ -1,21 +1,27 @@
 # authrust
 
-Framework-agnostic authentication and authorization for Rust, built on `http` and `tower`. It provides OAuth 2.0 / OpenID Connect sign-in (Google, Azure AD, ...), credentials and LDAP authentication, JWT access/refresh tokens, database-backed sessions (`sqlx` + PostgreSQL) with optional Redis caching, cookie handling, CSRF protection, and role-based access control.
+Framework-agnostic authentication and authorization for Rust, built on [`http`](https://docs.rs/http) and [`tower`](https://docs.rs/tower).
 
-This is a port of the Go [`goauth`](https://github.com/izetmolla/goauth) module and keeps its structure and naming: `goauth.New(&goauth.Config{...})` becomes `Authorization::new(Config { .. })`, `auth.UseAPIAuthorization(...)` becomes `auth.use_api_authorization([..])`, and so on.
+OAuth 2.0 / OpenID Connect (Google, Azure AD, …), credentials and LDAP, JWT access/refresh tokens, PostgreSQL sessions with optional Redis caching, cookies, CSRF protection, and role-based access control — all as `tower` layers and plain `http` handlers.
 
-Because the middlewares are `tower` layers and the endpoints are plain `http` handlers, authrust plugs into any `tower`-based stack — [axum](examples/axum/README.md), tonic, hyper directly — and into everything else through two small adapters (see the [actix-web example](examples/actix/README.md)).
+**Works with:** [axum](examples/axum/README.md) · [actix-web](examples/actix/README.md) · tonic · hyper · any `tower` stack
+
+---
 
 ## Features
 
-- **OAuth 2.0 / OIDC sign-in** with discovery, PKCE, `state`, and `nonce` checks
-- **Provider presets**: Google, Azure AD / Entra ID, credentials, LDAP / Active Directory
-- **JWT tokens**: HS256/HS384/HS512 access + refresh token pairs with configurable lifetimes (`"60s"`, `"15m"`, `"7d"`, `"1y"`, ...)
-- **Sessions**: persisted with `sqlx` against PostgreSQL, optionally cached in Redis
-- **Two protection modes**: Bearer JWT for APIs and session cookie (with sign-in redirect) for server-rendered pages
-- **Role-based access control** with `name:perms` grants (`"admin:rw"`, `"hr:r"`)
-- **Provider connect flow** for linking extra OAuth scopes or accounts to an existing user
-- **Security**: signed double-submit CSRF cookies, `__Host-`/`__Secure-` cookie prefixes, cross-subdomain SSO cookies, PBKDF2-SHA256 password hashing
+| Area | What you get |
+|------|----------------|
+| **OAuth / OIDC** | Discovery, PKCE, `state`, and `nonce` checks |
+| **Providers** | Google, Azure AD / Entra ID, credentials, LDAP / Active Directory |
+| **JWT** | HS256 / HS384 / HS512 access + refresh pairs (`"60s"`, `"15m"`, `"7d"`, `"1y"`, …) |
+| **Sessions** | `sqlx` + PostgreSQL, optional Redis cache |
+| **Protection** | Bearer JWT for APIs · session cookie + redirect for web pages |
+| **RBAC** | `name:perms` grants (`"admin:rw"`, `"hr:r"`) |
+| **Connect flow** | Link extra OAuth scopes or accounts to an existing user |
+| **Security** | Signed double-submit CSRF, `__Host-` / `__Secure-` cookies, cross-subdomain SSO, PBKDF2-SHA256 |
+
+---
 
 ## Installation
 
@@ -24,7 +30,13 @@ Because the middlewares are `tower` layers and the endpoints are plain `http` ha
 authrust = "0.1"
 ```
 
-The `axum` feature (enabled by default) adds `Authorization::handler()`, which returns an `axum::Router`. Turn it off with `default-features = false` when you are not using axum.
+The `axum` feature is **enabled by default** and adds `Authorization::handler()` (returns an `axum::Router`). Disable it when you are not using axum:
+
+```toml
+authrust = { version = "0.1", default-features = false }
+```
+
+---
 
 ## Quick start
 
@@ -37,11 +49,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let pool = sqlx::PgPool::connect("postgres://localhost/app").await?;
 
     let auth = Authorization::new(Config {
-        jwt_secret: "change-me".into(),           // required — HMAC signing secret
+        jwt_secret: "change-me".into(),            // required — HMAC signing secret
         auth_url: "https://app.example.com".into(), // external base URL
-        db: Some(pool),                           // required (users + sessions)
+        db: Some(pool),                            // required (users + sessions)
         providers: vec![google::new("GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET")],
-        // Map the raw provider profile onto a user in YOUR database.
+        // Map the provider profile onto a user in YOUR database.
         resolve_user: Some(Arc::new(|profile| {
             Box::pin(async move {
                 // look up / provision by profile["email"], profile["sub"], ...
@@ -57,9 +69,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     })?;
 
     let app = axum::Router::new()
-        // All auth endpoints in one line (see "HTTP endpoints" below).
-        .merge(auth.handler())
-        // A JWT-protected API route.
+        .merge(auth.handler()) // all auth endpoints
         .merge(
             axum::Router::new()
                 .route("/api/profile", axum::routing::get(|| async { "profile" }))
@@ -72,25 +82,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-The database schema authrust expects is in [`examples/schema.sql`](examples/schema.sql).
+Expected database schema: [`examples/schema.sql`](examples/schema.sql).
+
+---
 
 ## HTTP endpoints
 
-`auth.handler()` returns a router serving everything under `authrust::DEFAULT_BASE_PATH` (`/api/authorization`):
+`auth.handler()` mounts routes under `authrust::DEFAULT_BASE_PATH` (`/api/authorization`):
 
 | Method | Path | Handler | Description |
 |--------|------|---------|-------------|
-| `GET` | `{base}/providers` | `get_providers` | JSON list of configured providers (Auth.js-compatible shape) |
-| `ANY` | `{base}/provider/{provider}` | `handle_sign_in` | Starts the sign-in flow (OAuth redirect, or credentials POST) |
-| `ANY` | `{base}/provider/{provider}/callback` | `handle_callback` | OAuth/OIDC callback; validates state/PKCE/nonce, exchanges the code, resolves the user, creates the session, and renders the callback page |
+| `GET` | `{base}/providers` | `get_providers` | JSON list of providers (Auth.js-compatible) |
+| `ANY` | `{base}/provider/{provider}` | `handle_sign_in` | Start sign-in (OAuth redirect or credentials POST) |
+| `ANY` | `{base}/provider/{provider}/callback` | `handle_callback` | OAuth/OIDC callback → session + callback page |
 
-The three handlers are also public individually if you prefer to register the routes yourself, and `auth.route(request)` dispatches between them for routers that only offer a catch-all (see the actix-web example).
+You can also register the three handlers yourself, or use `auth.route(request)` as a catch-all dispatcher (see the [actix-web example](examples/actix/README.md)).
 
-Useful query parameters on the sign-in endpoint:
+### Sign-in options
 
-- `?json=true` (or header `X-Auth-Return-Redirect: 1` / `Accept: application/json`) — return the authorization URL as JSON instead of a 302 redirect
-- `?flow=token` (or header `X-Auth-Flow: token`) — token flow for mobile/API clients
-- `?connect=1&resource_id=<uuid>` — provider **connect** flow: link the OAuth account and scopes to an existing user; on completion the `Config::on_provider_connect` callback runs
+| Query / header | Effect |
+|----------------|--------|
+| `?json=true` · `X-Auth-Return-Redirect: 1` · `Accept: application/json` | Return the authorization URL as JSON instead of a 302 |
+| `?flow=token` · `X-Auth-Flow: token` | Token flow for mobile / API clients |
+| `?connect=1&resource_id=<uuid>` | **Connect** flow — link OAuth account/scopes to an existing user; runs `Config::on_provider_connect` when done |
+
+---
 
 ## Middlewares
 
@@ -99,36 +115,37 @@ All middlewares are `tower` layers:
 ```rust,no_run
 # use authrust::Authorization;
 # fn demo(auth: &Authorization) {
-// Bearer JWT (Authorization header or ?access_token=) for APIs.
+// Bearer JWT (Authorization header or ?access_token=) for APIs
 auth.use_api_authorization([
-    auth.with_roles(["admin"]),                 // optional role gate
-    auth.with_excluded_paths(["/api/public"]),  // optional path prefixes to skip
+    auth.with_roles(["admin"]),                // optional role gate
+    auth.with_excluded_paths(["/api/public"]), // optional path prefixes to skip
 ]);
 
-// Session cookie for server-rendered pages; unauthenticated requests are
-// redirected to Config::sign_in_redirect_url with ?redirectUrl=<original>.
+// Session cookie for server-rendered pages
+// Unauthenticated → redirect to Config::sign_in_redirect_url?redirectUrl=<original>
 auth.use_web_authorization([]);
 
-// Refresh-token endpoint layer: activates only when the client sends the
-// opt-in header (authrust::REFRESH_TOKEN_HANDLER_IDENTIFIER, "cft"),
-// otherwise passes the request through to the inner service.
+// Refresh-token endpoint: only active when the client sends the opt-in header
+// (authrust::REFRESH_TOKEN_HANDLER_IDENTIFIER, "cft"); otherwise passes through
 auth.handle_refresh_token();
 # }
 ```
 
-Inside a protected handler, build a `RequestContext` from the request head and ask:
+### Reading auth data in a handler
 
 ```rust,no_run
 # use authrust::{Authorization, http::RequestContext};
 # async fn demo(auth: &Authorization, parts: &http::request::Parts) {
 let r = RequestContext::new(parts);
 
-let claims = auth.get_claims(&r);              // the validated token's claims
-let roles = auth.get_roles(&r);                // Vec<String> from the "roles" claim
-let data = auth.get_auth_data_api(&r);         // AuthData { session_id, user_id, roles }
-let data = auth.get_auth_data_web(&r).await;   // same, resolved from the session cookie
+let claims = auth.get_claims(&r);            // validated token claims
+let roles = auth.get_roles(&r);              // Vec<String> from the "roles" claim
+let data = auth.get_auth_data_api(&r);       // AuthData { session_id, user_id, roles }
+let data = auth.get_auth_data_web(&r).await; // same, from the session cookie
 # }
 ```
+
+---
 
 ## Configuration
 
@@ -136,66 +153,83 @@ let data = auth.get_auth_data_web(&r).await;   // same, resolved from the sessio
 # use std::time::Duration;
 # use authrust::{Config, CookieOptions};
 Config {
-    jwt_secret: "...".into(),                 // required — HMAC signing secret
-    auth_url: "https://...".into(),           // external origin; falls back to request headers
-    signing_method: "HS256".into(),           // HS256 (default) | HS384 | HS512
-    access_token_duration: "60s".into(),      // s/m/h/d/w/mo/y units supported
-    refresh_token_duration: "1y".into(),
-    sign_in_redirect_url: "/sign-in".into(),  // target of the WEB middleware redirect
+    // Required
+    jwt_secret: "...".into(),                // HMAC signing secret
+    auth_url: "https://...".into(),          // external origin (falls back to request headers)
+    db: None,                                // Option<sqlx::PgPool> — required at runtime
 
-    db: None,                                 // Option<sqlx::PgPool>, required
-    redis: None,                              // optional session cache
+    // Tokens
+    signing_method: "HS256".into(),          // HS256 | HS384 | HS512
+    access_token_duration: "60s".into(),     // s / m / h / d / w / mo / y
+    refresh_token_duration: "1y".into(),
+
+    // Web
+    sign_in_redirect_url: "/sign-in".into(),
+    cookie_session_name: "cnf.id".into(),
+    cookies: CookieOptions::default(),
+
+    // Storage
+    redis: None,                             // optional session cache
     redis_prefix: "AUTHSESSIONS".into(),
     redis_ttl: Duration::from_secs(30 * 60),
+    user_table_name: "users".into(),         // needs at least: id, roles
+    session_table_name: "sessions".into(),   // see examples/schema.sql
 
-    user_table_name: "users".into(),          // needs at least: id, roles
-    session_table_name: "sessions".into(),    // see examples/schema.sql
-
-    cookie_session_name: "cnf.id".into(),     // WEB session cookie name
-    cookies: CookieOptions::default(),        // per-cookie overrides
-
-    providers: vec![],                        // see "Providers" below
-    resolve_user: None,                       // required for OAuth sign-in
-    on_provider_connect: None,                // optional
+    // Providers & callbacks
+    providers: vec![],
+    resolve_user: None,                      // required for OAuth sign-in
+    on_provider_connect: None,
 };
 ```
 
-For single sign-on across subdomains (`example.com`, `admin.example.com`, ...):
+### Cross-subdomain SSO
+
+Share sessions across `example.com`, `admin.example.com`, etc. All apps must use the same `jwt_secret`:
 
 ```rust,no_run
 let cookies = authrust::cross_subdomain_cookies(".example.com");
-// Config { cookies, .. } — all participating apps must share the same jwt_secret
+// Config { cookies, .. }
 ```
 
-## Tokens, sessions and roles
+---
 
-- `auth.authorize(opts)` creates a session row and signs an access/refresh pair. The OAuth callback does this automatically; call it yourself for custom flows (for example after an LDAP login).
-- `auth.check_session(&mut w, &r)` validates a refresh token, refreshes the access token with up-to-date roles, and re-sets the session cookie.
-- Roles use the `name:perms` grant format, where perms is `r`, `w`, or `rw`. `auth.get_role(endpoint_roles, user_roles)` returns `(has_role, can_read, can_write)`.
-- `authrust::hash_password` / `authrust::check_password` implement PBKDF2-SHA256 (`$pbkdf2-sha256$...`) for credentials storage.
+## Tokens, sessions & roles
+
+| API | Purpose |
+|-----|---------|
+| `auth.authorize(opts)` | Create a session and sign an access/refresh pair (OAuth callback does this; call it yourself for custom flows such as LDAP) |
+| `auth.check_session(&mut w, &r)` | Validate refresh token, refresh access token with up-to-date roles, re-set session cookie |
+| `auth.get_role(endpoint_roles, user_roles)` | Check `name:perms` grants (`r` / `w` / `rw`) → `(has_role, can_read, can_write)` |
+| `hash_password` / `check_password` | PBKDF2-SHA256 (`$pbkdf2-sha256$...`) for credentials storage |
+
+---
 
 ## Framework integration
 
-authrust itself depends on no web framework. Each example is a runnable workspace member with its own README:
+authrust depends on **no** web framework. Examples are runnable workspace members:
 
-| Framework | Example | Adapter needed |
-|-----------|---------|----------------|
-| axum | [`examples/axum`](examples/axum/README.md) | none — `auth.handler()` is a `Router`, the middlewares are layers |
-| actix-web | [`examples/actix`](examples/actix/README.md) | two small functions, included in the example |
-| hyper / tonic / any `tower` stack | — | none |
+| Framework | Example | Adapter |
+|-----------|---------|---------|
+| **axum** | [`examples/axum`](examples/axum/README.md) | None — `auth.handler()` is a `Router` |
+| **actix-web** | [`examples/actix`](examples/actix/README.md) | Two small helpers (included in the example) |
+| **hyper / tonic / any `tower` stack** | — | None |
 
-See [`examples/README.md`](examples/README.md) for how to run and test them.
+How to run and test: [`examples/README.md`](examples/README.md).
+
+---
 
 ## Providers
 
-| Provider | Module | Type |
-|----------|--------|------|
-| Google | `providers::google` | OIDC (discovery, PKCE + state + nonce) |
-| Azure AD / Entra ID | `providers::azuread` | OIDC v2.0 endpoints, Microsoft Graph profile |
+| Provider | Module | Notes |
+|----------|--------|-------|
+| Google | `providers::google` | OIDC — discovery, PKCE + state + nonce |
+| Azure AD / Entra ID | `providers::azuread` | OIDC v2.0 + Microsoft Graph profile |
 | Credentials | `providers::credentials` | Username/password with a custom `authorize` callback |
-| LDAP / Active Directory | `providers::ldap` | Directory bind plus attribute and role mapping |
+| LDAP / Active Directory | `providers::ldap` | Directory bind + attribute and role mapping |
 
-Any other OAuth/OIDC service can be configured with a plain `OAuthProvider`, and the `Provider` trait is public so you can add your own.
+Any other OAuth/OIDC service works as a plain `OAuthProvider`. The `Provider` trait is public if you need a custom one.
+
+---
 
 ## License
 
