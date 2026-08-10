@@ -1,9 +1,8 @@
 //! Error type for the crate.
 //!
-//! The Go package exposes sentinel `error` values (`ErrNotInitialized`,
-//! `ErrSessionExpired`, ...) that callers compare with `errors.Is`. Rust models
-//! the same set as variants of a single [`Error`] enum, so `matches!` and
-//! pattern matching replace `errors.Is`.
+//! Failures are represented as variants of a single [`Error`] enum. Match on
+//! the variant (or use helpers on [`Error`]) instead of comparing sentinel
+//! values.
 
 use std::fmt;
 

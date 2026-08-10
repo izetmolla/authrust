@@ -1,4 +1,7 @@
-//! The HTTP endpoints: provider listing, sign-in and OAuth callback.
+//! Auth HTTP handlers: providers list, sign-in, and OAuth/OIDC callback.
+//!
+//! With the `axum` feature, prefer [`Authorization::handler`]. Otherwise call
+//! these methods directly or dispatch with [`Authorization::route`].
 
 use std::collections::HashMap;
 
@@ -27,8 +30,9 @@ use crate::user::{OAuthUser, User};
 use crate::utils::format_user;
 
 impl Authorization {
-    /// Dispatches a request to the matching endpoint, the framework-agnostic
-    /// equivalent of the `ServeMux` returned by Go's `Handler`.
+    /// Dispatches a request to the matching auth endpoint (catch-all style).
+    ///
+    /// Useful for frameworks that do not merge routers (for example actix-web):
     ///
     /// - `GET  {base}/providers`
     /// - `ANY  {base}/provider/{provider}`

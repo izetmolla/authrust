@@ -19,6 +19,7 @@ impl Authorization {
     ///
     /// The three handlers are also callable individually if you prefer to
     /// register the routes yourself.
+    #[cfg_attr(docsrs, doc(cfg(feature = "axum")))]
     pub fn handler(&self) -> Router {
         let providers = self.clone();
         let sign_in = self.clone();

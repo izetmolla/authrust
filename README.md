@@ -1,8 +1,14 @@
 # authrust
 
+[![Release](https://img.shields.io/badge/release-v0.1.0-brightgreen?logo=github&logoColor=white&labelColor=24292f)](https://crates.io/crates/authrust)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue?logo=open-source-initiative&logoColor=white&labelColor=24292f)](LICENSE-APACHE)
+[![Documentation](https://img.shields.io/badge/documentation-available-brightgreen?logo=readthedocs&logoColor=white&labelColor=24292f)](https://docs.rs/authrust)
+
 Framework-agnostic authentication and authorization for Rust, built on [`http`](https://docs.rs/http) and [`tower`](https://docs.rs/tower).
 
 OAuth 2.0 / OpenID Connect (Google, Azure AD, …), credentials and LDAP, JWT access/refresh tokens, PostgreSQL sessions with optional Redis caching, cookies, CSRF protection, and role-based access control — all as `tower` layers and plain `http` handlers.
+
+**Author:** [Izet Molla](https://github.com/izetmolla)
 
 **Works with:** [axum](examples/axum/README.md) · [actix-web](examples/actix/README.md) · tonic · hyper · any `tower` stack
 
@@ -233,4 +239,11 @@ Any other OAuth/OIDC service works as a plain `OAuthProvider`. The `Provider` tr
 
 ## License
 
-MIT
+Licensed under either of
+
+- [Apache License, Version 2.0](LICENSE-APACHE)
+- [MIT license](LICENSE-MIT)
+
+at your option.
+
+Copyright (c) 2026 [Izet Molla](https://github.com/izetmolla)

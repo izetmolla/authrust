@@ -4,14 +4,21 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.85"
 description = "Framework-agnostic authentication and authorization for Rust, built on http + tower"
-license = "MIT"
+license = "MIT OR Apache-2.0"
+authors = ["Izet Molla"]
 repository = "https://github.com/izetmolla/authrust"
+homepage = "https://github.com/izetmolla/authrust"
+documentation = "https://docs.rs/authrust"
 readme = "README.md"
 keywords = ["authentication", "oauth2", "oidc", "jwt", "tower"]
 categories = ["authentication", "web-programming"]
 # The example apps under examples/ are standalone workspace members, not cargo
 # example targets of this package.
 autoexamples = false
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 
 [workspace]
 members = ["examples/axum", "examples/actix"]

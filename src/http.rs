@@ -1,9 +1,7 @@
 //! Request plumbing shared by the handlers and middlewares.
 //!
-//! Go's handlers take a `*http.Request`, which bundles the method, URL, headers,
-//! cookies, the parsed form and the peer address. [`RequestContext`] is the
-//! equivalent view over an [`http::request::Parts`] plus an optionally collected
-//! body, so the ported functions keep the same shape.
+//! [`RequestContext`] is a read-only view over [`http::request::Parts`] plus an
+//! optionally collected body (method, URL, headers, cookies, form, peer address).
 
 use std::collections::HashMap;
 use std::net::SocketAddr;

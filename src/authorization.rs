@@ -1,4 +1,7 @@
-//! Configuration and the [`Authorization`] handle every other module hangs off.
+//! Configuration and the [`Authorization`] handle.
+//!
+//! Construct with [`Authorization::new`] / [`Authorization::new_with`], then use
+//! the methods on [`Authorization`] for handlers, middlewares, and helpers.
 
 use std::fmt;
 use std::sync::Arc;
@@ -28,10 +31,14 @@ pub type ResolveUserFn =
 pub type OnProviderConnectFn =
     Arc<dyn Fn(String, Account, User, String) -> BoxFuture<'static, Result<()>> + Send + Sync>;
 
-/// Mutates a [`Config`] in place, the analogue of Go's `ConfigFunc`.
+/// Callback that mutates a [`Config`] in place (used by [`Authorization::new_with`]).
 pub type ConfigFunc = Box<dyn FnOnce(&mut Config) + Send>;
 
 /// Everything needed to construct an [`Authorization`].
+///
+/// Required fields at runtime: [`jwt_secret`](Self::jwt_secret) and
+/// [`db`](Self::db). For OAuth sign-in, also set [`resolve_user`](Self::resolve_user)
+/// and at least one entry in [`providers`](Self::providers).
 #[derive(Clone)]
 pub struct Config {
     /// HMAC signing secret. Required.
@@ -182,11 +189,9 @@ pub(crate) struct Inner {
     pub(crate) on_provider_connect: Option<OnProviderConnectFn>,
 }
 
-/// The entry point of the crate: holds the configuration and exposes every
-/// handler, middleware and helper.
+/// Entry point of the crate: configuration plus handlers, middlewares, and helpers.
 ///
-/// Cloning is cheap; the value is a handle around shared state, mirroring the
-/// `*Authorization` pointer the Go package passes around.
+/// Cloning is cheap — this is an `Arc` handle around shared inner state.
 #[derive(Clone)]
 pub struct Authorization {
     inner: Arc<Inner>,

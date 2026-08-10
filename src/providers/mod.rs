@@ -1,9 +1,18 @@
-//! Provider presets.
+//! Built-in identity provider presets.
 //!
-//! Every preset returns an `Arc<dyn Provider>` ready to drop into
-//! [`Config::providers`](crate::authorization::Config::providers). Any other
-//! OAuth/OIDC service can be configured with a plain
-//! [`OAuthProvider`](crate::provider::OAuthProvider).
+//! Each preset returns an `Arc<dyn Provider>` ready for
+//! [`Config::providers`](crate::Config::providers):
+//!
+//! | Module | Provider |
+//! |--------|----------|
+//! | [`google`] | Google OIDC |
+//! | [`azuread`] | Azure AD / Entra ID |
+//! | [`credentials`] | Username / password |
+//! | [`ldap`] | LDAP / Active Directory |
+//!
+//! Any other OAuth/OIDC service can use a plain
+//! [`OAuthProvider`](crate::OAuthProvider). The [`Provider`](crate::Provider)
+//! trait is public for custom implementations.
 
 pub mod azuread;
 pub mod common;

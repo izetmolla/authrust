@@ -1,8 +1,8 @@
-//! Route protection as `tower` layers.
+//! Route protection as [`tower_layer::Layer`]s.
 //!
-//! Go's middlewares are `func(http.Handler) http.Handler`; the Rust equivalent
-//! is a [`tower_layer::Layer`] wrapping a [`tower_service::Service`], which is
-//! what axum, hyper and tonic all speak.
+//! Use [`Authorization::use_api_authorization`] for Bearer JWT APIs and
+//! [`Authorization::use_web_authorization`] for session-cookie web routes.
+//! Compatible with axum, hyper, tonic, and other `tower` stacks.
 
 use std::sync::Arc;
 use std::task::{Context, Poll};

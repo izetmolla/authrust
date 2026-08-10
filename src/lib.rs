@@ -1,24 +1,20 @@
-//! Framework-agnostic authentication and authorization, built on `http` and
-//! `tower`.
+//! Framework-agnostic authentication and authorization for Rust.
 //!
-//! This is a Rust port of the Go `goauth` module and keeps its structure and
-//! naming: an [`Authorization`] value is built from a [`Config`], exposes
-//! middleware for API and web routes, and serves the provider endpoints under
-//! [`DEFAULT_BASE_PATH`].
+//! Built on [`http`] and [`tower`]: OAuth 2.0 / OpenID Connect, credentials,
+//! LDAP, JWT access/refresh tokens, PostgreSQL sessions (optional Redis cache),
+//! cookies, CSRF protection, and role-based access control.
 //!
-//! # Overview
+//! # Getting started
 //!
-//! - **Providers**: OAuth 2.0 / OpenID Connect, credentials, and LDAP. See
-//!   [`providers`].
-//! - **Tokens**: short-lived access tokens plus long-lived refresh tokens,
-//!   signed with HMAC or RSA.
-//! - **Sessions**: rows in PostgreSQL through `sqlx`, optionally cached in
-//!   Redis.
-//! - **Middleware**: [`ApiAuthorizationLayer`] validates bearer tokens,
-//!   [`WebAuthorizationLayer`] validates the session cookie, and
-//!   [`RefreshTokenLayer`] serves refresh requests.
+//! 1. Add the crate (the `axum` feature is on by default):
 //!
-//! # Example
+//! ```toml
+//! [dependencies]
+//! authrust = "0.1"
+//! ```
+//!
+//! 2. Build an [`Authorization`] from a [`Config`], then mount the handlers and
+//!    layers on your router:
 //!
 //! ```no_run
 //! use std::sync::Arc;
@@ -43,10 +39,56 @@
 //! })?;
 //!
 //! # #[cfg(feature = "axum")]
-//! let app = axum::Router::new().merge(auth.handler());
+//! let app = axum::Router::new()
+//!     .merge(auth.handler())
+//!     .layer(auth.use_api_authorization([]));
+//! # let _ = app;
 //! # Ok(())
 //! # }
 //! ```
+//!
+//! # What you get
+//!
+//! | Area | Details |
+//! |------|---------|
+//! | **Providers** | Google, Azure AD / Entra ID, credentials, LDAP — see [`providers`] |
+//! | **Tokens** | HS256 / HS384 / HS512 access + refresh pairs |
+//! | **Sessions** | PostgreSQL via `sqlx`, optional Redis cache |
+//! | **API protection** | [`Authorization::use_api_authorization`] — Bearer JWT |
+//! | **Web protection** | [`Authorization::use_web_authorization`] — session cookie + redirect |
+//! | **Refresh** | [`Authorization::handle_refresh_token`] — opt-in refresh endpoint |
+//! | **RBAC** | `name:perms` grants (`admin:rw`, `hr:r`, …) |
+//!
+//! # HTTP endpoints
+//!
+//! With the `axum` feature, [`Authorization::handler`] mounts routes under
+//! [`DEFAULT_BASE_PATH`] (`/api/authorization`):
+//!
+//! - `GET {base}/providers` — list configured providers
+//! - `{base}/provider/{provider}` — start sign-in
+//! - `{base}/provider/{provider}/callback` — OAuth/OIDC callback
+//!
+//! Without axum, register the individual handlers yourself or use
+//! [`Authorization::route`] as a catch-all dispatcher.
+//!
+//! # Frameworks
+//!
+//! Middlewares are `tower` layers and handlers are plain `http` services, so the
+//! crate works with axum, hyper, tonic, and other `tower` stacks. actix-web needs
+//! a thin adapter (see the repository examples).
+//!
+//! # Crate features
+//!
+//! | Feature | Default | Description |
+//! |---------|---------|-------------|
+//! | `axum` | yes | Enables [`Authorization::handler`] returning an `axum::Router` |
+//!
+//! # Re-exports
+//!
+//! Common types are re-exported at the crate root so call sites stay short
+//! (`authrust::Authorization`, `authrust::Config`, …).
+
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 pub mod action_auth;
 pub mod authorization;
@@ -85,8 +127,7 @@ mod db;
 #[cfg(feature = "axum")]
 mod axum_support;
 
-// The Go module is a single flat package; these re-exports keep the same
-// call sites available as `authrust::Item`.
+// Flat re-exports for the public API surface.
 
 pub use authorization::{Authorization, Config, ConfigFunc, OnProviderConnectFn, ResolveUserFn};
 pub use authorize::{AuthorizeOptions, AuthorizeOptionsFunc, new_authorize_options};
