@@ -27,8 +27,6 @@ use actix_web::dev::{ServiceRequest, ServiceResponse};
 use actix_web::http::header::LOCATION;
 use actix_web::middleware::{Next, from_fn};
 use actix_web::{App, Error, HttpMessage, HttpRequest, HttpResponse, HttpServer, web};
-use http::request::Parts;
-use http_body_util::BodyExt;
 use authrust::claims::{JwtToken, jwt_from_context};
 use authrust::constants::DEFAULT_BASE_PATH;
 use authrust::http::{ClientAddr, ConnectionSecure, RequestContext};
@@ -36,6 +34,8 @@ use authrust::middleware::extract_bearer_token;
 use authrust::providers::google;
 use authrust::roles::roles_from_any;
 use authrust::{Authorization, Config, JsonbArray, User};
+use http::request::Parts;
+use http_body_util::BodyExt;
 use serde_json::json;
 
 /// The demo user every sign-in resolves to, seeded by `examples/schema.sql`.

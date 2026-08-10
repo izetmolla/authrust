@@ -258,10 +258,7 @@ async fn check_session_refreshes_access_token() {
     let r = RequestContext::with_body(&parts, collected);
     let mut w = ResponseWriter::new();
 
-    let result = auth
-        .check_session(&mut w, &r)
-        .await
-        .expect("check_session");
+    let result = auth.check_session(&mut w, &r).await.expect("check_session");
     assert_eq!(result.session_id, session_id);
     assert!(!result.tokens.access_token.is_empty());
     assert_eq!(result.user_id, TEST_USER_ID);

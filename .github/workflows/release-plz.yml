@@ -1,33 +1,30 @@
 # Release automation with release-plz (https://release-plz.dev).
 #
-# How versions bump (Semantic Versioning via Conventional Commits + API checks):
-#   fix: / perf: / refactor:  →  patch  (0.1.0 → 0.1.1)
-#   feat:                     →  minor  (0.1.0 → 0.2.0)
-#   feat!: / BREAKING CHANGE  →  major  (0.1.0 → 1.0.0)
-#                              (or minor while still on 0.x, per semver rules)
+# Version bumps from Conventional Commits:
+#   fix:  → patch   |  feat: → minor  |  feat!: / BREAKING CHANGE → major
 #
-# Flow:
-#   1. Push/merge to main → release-plz opens/updates a "release" PR
-#      (Cargo.toml version + CHANGELOG.md).
-#   2. Merge that PR → release-plz tags, creates a GitHub Release, and
-#      publishes to crates.io.
-#
-# Setup (one-time):
-#   - Repo Settings → Actions → General → Workflow permissions:
-#       "Read and write permissions" + allow creating/approving PRs
-#   - Add secret CARGO_REGISTRY_TOKEN (crates.io token with publish-update)
-#   - Prefer commits like: feat: ..., fix: ..., chore: ...
+# One-time GitHub setup (required or jobs fail):
+#   1. Settings → Actions → General → Workflow permissions:
+#        - Read and write permissions
+#        - Allow GitHub Actions to create and approve pull requests  ← needed for release PRs
+#   2. Settings → Secrets → Actions → add CARGO_REGISTRY_TOKEN
+#        (crates.io token with publish-update / publish-new)
 
 name: Release-plz
 
 on:
   push:
     branches: [main, master]
+  workflow_dispatch:
 
-permissions: {}
+# Broad enough for release-plz to open PRs and push tags.
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
 
 jobs:
-  # Publish crates that are already version-bumped on main but not yet on crates.io.
+  # Publish crates already version-bumped on main but not yet on crates.io.
   release-plz-release:
     name: Release-plz release
     runs-on: ubuntu-latest
@@ -35,16 +32,23 @@ jobs:
     permissions:
       contents: write
       pull-requests: read
-      id-token: write # crates.io trusted publishing (optional)
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
-          persist-credentials: false
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Ensure crates.io token is configured
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          if [ -z "$CARGO_REGISTRY_TOKEN" ]; then
+            echo "::error::Missing secret CARGO_REGISTRY_TOKEN. Add a crates.io API token under Settings → Secrets → Actions."
+            exit 1
+          fi
 
       - name: Run release-plz
         uses: release-plz/action@v0.5
@@ -62,15 +66,17 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      issues: write
     concurrency:
       group: release-plz-${{ github.ref }}
       cancel-in-progress: false
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
-          persist-credentials: false
+          # Needed so release-plz can push the release branch with GITHUB_TOKEN.
+          persist-credentials: true
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable

@@ -8,26 +8,6 @@
 [workspace]
 # Example crates already have `publish = false` and are skipped.
 
-[changelog]
-body = """
-## [{{ version }}]\
-    {%- if release_link -%}
-        ({{ release_link }})
-    {%- endif %} \
-    - {{ timestamp | date(format="%Y-%m-%d") }}
-{% for group, commits in commits | group_by(attribute="group") %}
-### {{ group | striptags | trim | upper_first }}
-{% for commit in commits %}
-- {% if commit.scope %}*({{ commit.scope }})* {% endif %}\
-    {% if commit.breaking %}[**breaking**] {% endif %}\
-    {{ commit.message | upper_first }}\
-    {% if commit.links %} \
-      ({% for link in commit.links %}[{{ link.text }}]({{ link.href }}){% if not loop.last %}, {% endif %}{% endfor %})\
-    {% endif %}
-{% endfor %}
-{% endfor %}
-"""
-
 [[package]]
 name = "authrust"
 # GitHub release / tag style: v0.1.1 (instead of authrust-v0.1.1)

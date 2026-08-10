@@ -14,14 +14,14 @@
 
 use std::sync::Arc;
 
+use authrust::http::RequestContext;
+use authrust::providers::google;
+use authrust::{Authorization, Config, JsonbArray, User};
 use axum::Router;
 use axum::extract::{Extension, Request};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
-use authrust::http::RequestContext;
-use authrust::providers::google;
-use authrust::{Authorization, Config, JsonbArray, User};
 use serde_json::json;
 
 /// The demo user every sign-in resolves to, seeded by `examples/schema.sql`.

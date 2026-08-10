@@ -57,7 +57,12 @@ impl User {
     pub fn login_email(&self, fallback: &str) -> String {
         let mail = self.get("mail");
         let upn = self.get("userPrincipalName");
-        for value in [self.email.as_str(), mail.as_str(), upn.as_str(), self.username.as_str()] {
+        for value in [
+            self.email.as_str(),
+            mail.as_str(),
+            upn.as_str(),
+            self.username.as_str(),
+        ] {
             if !value.trim().is_empty() {
                 return value.to_string();
             }

@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -40,15 +40,15 @@ jobs:
       - name: Doc tests
         run: cargo test --doc --all-features
 
-  # Optional: real Postgres/Redis. Enable by setting repository secrets
-  # DATABASE_URL and REDIS_URL (see .env.example).
+  # Optional: real Postgres/Redis. Enable by setting repository variable
+  # RUN_INTEGRATION_TESTS=true and secrets DATABASE_URL + REDIS_URL.
   integration:
     name: Integration (Postgres + Redis)
     runs-on: ubuntu-latest
     if: ${{ vars.RUN_INTEGRATION_TESTS == 'true' }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
