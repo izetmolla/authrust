@@ -6,7 +6,8 @@
 #   BREAKING → major (minor while on 0.x)
 
 [workspace]
-# Example crates already have `publish = false` and are skipped.
+pr_branch_prefix = "release-plz-"
+pr_labels = ["release"]
 
 [[package]]
 name = "authrust"

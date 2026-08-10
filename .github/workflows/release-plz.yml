@@ -17,7 +17,6 @@ on:
     branches: [main, master]
   workflow_dispatch:
 
-# Broad enough for release-plz to open PRs and push tags.
 permissions:
   contents: write
   pull-requests: write
@@ -58,7 +57,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
-  # Open/update a PR that bumps patch/minor/major + CHANGELOG for the next release.
+  # Open/update a single release PR for the next version.
   release-plz-pr:
     name: Release-plz PR
     runs-on: ubuntu-latest
@@ -75,11 +74,32 @@ jobs:
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
-          # Needed so release-plz can push the release branch with GITHUB_TOKEN.
           persist-credentials: true
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Delete orphan release-plz branches
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # Orphans appear when PR creation fails (usually missing
+          # "Allow GitHub Actions to create and approve pull requests").
+          mapfile -t branches < <(git ls-remote --heads origin 'release-plz-*' | awk '{print $2}' | sed 's#refs/heads/##')
+          if [ "${#branches[@]}" -eq 0 ]; then
+            echo "No release-plz branches found."
+            exit 0
+          fi
+          for branch in "${branches[@]}"; do
+            pr="$(gh pr list --head "$branch" --state open --json number --jq '.[0].number // empty' || true)"
+            if [ -n "$pr" ]; then
+              echo "Keeping origin/${branch} (open PR #${pr})"
+              continue
+            fi
+            echo "Deleting orphan origin/${branch}"
+            git push origin --delete "$branch"
+          done
 
       - name: Run release-plz
         uses: release-plz/action@v0.5
